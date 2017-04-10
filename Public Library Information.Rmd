@@ -1,0 +1,377 @@
+---
+title: "Public Library Information"
+author: "Karen Kwan"
+date: "April 10, 2017"
+output: html_document
+
+---
+
+load datasets
+
+```{r}
+lib2015<-read.csv(file = "~/Karen/CKME136/data/ontario_public_library_statistics_2015_open_data.csv", header=T,sep=",")
+lib2014<-read.csv(file = "~/Karen/CKME136/data/ontario_public_library_statistics_2014_open_data.csv", header=T,sep=",")
+lib2013<-read.csv(file = "~/Karen/CKME136/data/ontario_public_library_statistics_2013_open_data.csv", header=T,sep=",")
+lib2012<-read.csv(file = "~/Karen/CKME136/data/ontario_public_library_statistics_2012_open_data.csv", header=T,sep=",")
+lib2011<-read.csv(file = "~/Karen/CKME136/data/ontario_public_library_statistics_2011_open_data.csv", header=T,sep=",")
+```
+
+Combine some of the variables in 2015 dataset to make consistent with other years and remove the separated data. In 2015 this data was collected with separate T and F variables while in previous years it was collected as a single variable.
+
+```{r}
+#combining T and F variables into one variable
+lib2015$C4.1<-rowSums(lib2015[,c("C4.1.F","C4.1.T")],na.rm=T) 
+lib2015$E2.1<-rowSums(lib2015[,c("E2.1.F","E2.1.T")],na.rm=T) 
+lib2015$E2.3<-rowSums(lib2015[,c("E2.3.F","E2.3.T")],na.rm=T) 
+lib2015$E2.4<-rowSums(lib2015[,c("E2.4.F","E2.4.T")],na.rm=T) 
+lib2015$E2.6<-rowSums(lib2015[,c("E2.6.F","E2.6.T")],na.rm=T) 
+#removing all the separated T and F variables
+lib2015<-subset(lib2015,select=-c(C4.1.F,C4.1.T,E2.1.F,E2.1.T,E2.3.F,E2.3.T,E2.4.F,E2.4.T,E2.6.F,E2.6.T)) 
+
+```
+
+Merge all the datasets. Combining the datasets show that the number of variables in the merged data frame is greater than the number of variables in any of the component datasets. This is because new variables were introduced in sucessive years but there were also some that were discontinued. Between 2011 and 2015 there were at least 40 new variables introduced.
+
+```{r}
+library(plyr)
+libmerge<-rbind.fill(lib2011,lib2012,lib2013,lib2014,lib2015)
+
+str(libmerge) #'data.frame':	1906 obs. of  324 variables
+str(lib2011) #'data.frame':	386 obs. of  279 variables
+str(lib2012) #'data.frame':	383 obs. of  290 variables
+str(lib2013) #'data.frame':	280 obs. of  293 variables
+str(lib2014) #'data.frame':	378 obs. of  300 variables
+str(lib2015) #'data.frame':	379 obs. of  319 variables
+
+```
+
+Remove variables that are not relevant to study.
+
+```{r}
+#removes address of libraries and funding and revenue information
+libmergeclean<-libmerge[,!grepl("^[A,B]",names(libmerge))] 
+#puts library type and number of active cardholders variables back into the data frame
+libmergeclean$A1.4<-libmerge$A1.4 
+libmergeclean$A1.14<-libmerge$A1.14
+
+#remove separated values of English, French and Other language materials, only keeping the total
+libmergeclean<-libmergeclean[-grep("C[1-9]{1}\\.[1-9]{1}\\.[E,F,O]",names(libmergeclean))] 
+libmergeclean<-libmergeclean[-grep("C[1-9]{1}\\.[1-9]{1}\\.[1-9]{1}\\.[E,F,O]",names(libmergeclean))] 
+
+#remove details on the names of downloading services
+libmergeclean<-libmergeclean[-grep("C4.3\\.[0-9]{2}",names(libmergeclean))]
+
+```
+
+Combine some of the variables in the dataset to make consistent with other variables and remove the separated data. The T and F variables in the last section of each dataset should be combined as one variable to be consistent with similar questions in the rest of the dataset.
+
+```{r}
+#combining T and F variables into one variable
+libmergeclean$H1.2.1<-rowSums(libmergeclean[,c("H1.2.1.F","H1.2.1.T")],na.rm=T) libmergeclean$H1.3.1<-rowSums(libmergeclean[,c("H1.3.1.F","H1.3.1.T")],na.rm=T) libmergeclean$H1.4.1<-rowSums(libmergeclean[,c("H1.4.1.F","H1.4.1.T")],na.rm=T) libmergeclean$H1.5.1<-rowSums(libmergeclean[,c("H1.5.1.F","H1.5.1.T")],na.rm=T) libmergeclean$H1.7.1<-rowSums(libmergeclean[,c("H1.7.1.F","H1.7.1.T")],na.rm=T)
+libmergeclean$H1.8.1<-rowSums(libmergeclean[,c("H1.8.1.F","H1.8.1.T")],na.rm=T) libmergeclean$H1.8.3<-rowSums(libmergeclean[,c("H1.8.3.F","H1.8.3.T")],na.rm=T) libmergeclean$H1.9.1<-rowSums(libmergeclean[,c("H1.9.1.F","H1.9.1.T")],na.rm=T) 
+#removing all the separated T and F variables, last variable H1.5.4 added to remove empty variable
+libmergeclean<-subset(libmergeclean,select=-c(H1.2.1.F,H1.2.1.T,H1.3.1.F,H1.3.1.T,H1.4.1.F,H1.4.1.T,H1.5.1.F,H1.5.1.T,H1.7.1.F,H1.7.1.T,H1.8.1.F,H1.8.1.T,H1.8.3.F,H1.8.3.T,H1.9.1.F,H1.9.1.T,H1.5.4)) 
+
+```
+
+Remove "contracting libraries" from observations. These organizations do not represent a physical library space, including them would skew the summary statistics about active cardholders as library cardholders in the community are counted with the physical library the services are contracted with.
+
+```{r}
+libmergecleanSM<-libmergeclean[libmergeclean$A1.4!="Contracting",]
+
+```
+
+Sort the columns so that they can be referred to in groups by position
+
+```{r}
+#rename the first three columns so that sorting will keep them as first three columns
+library(plyr)
+libmergecleanSM<-rename(libmergecleanSM, c("Library.Number"="A.Library.Number","Library.Full.Name"="A.Library.Full.Name","Survey.Year.From"="A.Survey.Year.From"))
+
+libmergecleanSMsort<-libmergecleanSM[,order(colnames(libmergecleanSM))]
+
+```
+
+Check structure and convert variables into the correct format and replace NAs.
+
+```{r}
+str(libmergecleanSMsort)
+chars<-c(1,2) #columns with character data
+nums<-c(4,6:25,27:52,56,58:144,146,148:159,161:168,170:176,178:184,186,188,190:196) #columns with numeric data
+fctrs<-c(3,5,26,53:55,57,145,147,160,169,177,185,187,189) #columns with factor data
+
+libmergecleanSMsort[,fctrs]<-lapply(libmergecleanSMsort[,fctrs],factor)
+libmergecleanSMsort[fctrs][is.na(libmergecleanSMsort[fctrs])]<-0
+
+libmergecleanSMsort[,nums]<-lapply(libmergecleanSMsort[nums],FUN=function(x) as.numeric(gsub(",","",x)))
+libmergecleanSMsort[nums][is.na(libmergecleanSMsort[nums])]<-0
+
+#structure showed different number of library names and library numbers, needed to condolidate libraries that were named differently on different survey years
+libmergecleanSMsort[,1]<-sub("Grand Valley Library Board","Grand Valley",libmergecleanSMsort[,1])
+libmergecleanSMsort[,1]<-sub("Town of Grand Valley Public Library Board","Grand Valley",libmergecleanSMsort[,1])
+libmergecleanSMsort[,1]<-sub("Bibliotheque Publique du Canton de la Nation","La Nation",libmergecleanSMsort[,1])
+libmergecleanSMsort[,1]<-gsub("Middlesex County Library","Middlesex County",libmergecleanSMsort[,1])
+
+```
+
+Grouping variables into different dataframes so that variables can be organized to be explored separately, keeping library number and survey year as attributes to re-merge as needed.
+
+```{r}
+basicInfo<-libmergecleanSMsort[,c("A.Library.Full.Name","A.Library.Number","A.Survey.Year.From","A1.4","A1.14","P1.1","P1.2","P2.1","P2.2")] 
+
+groupC<-grep("^C+",names(libmergecleanSMsort), value = TRUE)
+libraryHoldings<-libmergecleanSMsort[,c("A.Library.Number","A.Survey.Year.From",groupC)]
+
+groupD<-grep("^D+",names(libmergecleanSMsort), value = TRUE)
+libraryStaffing<-libmergecleanSMsort[,c("A.Library.Number","A.Survey.Year.From",groupD)]
+
+groupE<-grep("^E+",names(libmergecleanSMsort), value = TRUE)
+libraryFacilities<-libmergecleanSMsort[,c("A.Library.Number","A.Survey.Year.From",groupE)]
+
+groupFG<-grep("^[F,G]+",names(libmergecleanSMsort), value = TRUE)
+libraryActivities<-libmergecleanSMsort[,c("A.Library.Number","A.Survey.Year.From",groupFG)]
+
+groupH<-grep("^H+",names(libmergecleanSMsort), value = TRUE)
+libraryPartners<-libmergecleanSMsort[,c("A.Library.Number","A.Survey.Year.From",groupH)]
+```
+
+Check structure, summary, analyze and plots (basic information)
+
+```{r}
+summary(basicInfo)
+#Find which libraries did not have data for all 5 years of the survey
+libcounttable<-table(basicInfo$A.Library.Full.Name)
+libcount<-as.data.frame(libcounttable)
+libcount[which(libcount$Freq<5),]
+
+#Total for populations and households served by combining resident and contracting information
+basicInfo$pServed<-rowSums(basicInfo[,c("P1.1","P1.2")],na.rm=T)
+basicInfo$hServed<-rowSums(basicInfo[,c("P2.1","P2.2")],na.rm=T)
+
+#Average people per household
+pop2house<-basicInfo$pServed/basicInfo$hServed
+pop2house<-pop2house[is.finite(pop2house)]
+mean(pop2house)
+#Replace zero households by calculating households based on average population per household
+basicInfo$hServed<-ifelse(basicInfo$hServed==0,basicInfo$pServed/2,basicInfo$hServed)
+
+#Active cardholders per population
+basicInfo$C2P<-basicInfo$A1.14/basicInfo$pServed
+#Active cardholders per household
+basicInfo$C2H<-basicInfo$A1.14/basicInfo$hServed
+
+#Libraries with more active cardholders than residents
+library(plyr)
+count(basicInfo$C2P>1)
+
+#Households with high number of cardholders
+library(plyr)
+count(basicInfo$C2H>1)
+count(basicInfo$C2H>2)
+
+#Boxplots
+boxplot(C2P~A.Survey.Year.From,data = basicInfo,main="Cards per Population by Year",xlab="Year",ylab="Cards per Population")
+boxplot(C2H~A.Survey.Year.From,data = basicInfo,main="Cards per Household by Year",xlab="Year",ylab="Cards per Household")
+library(lattice)
+bwplot(~C2P|A.Survey.Year.From,basicInfo,main="Cardholders per Population by Year", ylab="Year", xlab="Cardholders per Population")
+bwplot(~C2H|A.Survey.Year.From,basicInfo,main="Cardholders per Household by Year", ylab="Year", xlab="Cardholders per Household")
+bwplot(~C2P|A1.4+A.Survey.Year.From,basicInfo,main="Cardholders per Population by Library Type and Year", xlab="Library Type and Year", ylab="Cards per Population")
+
+#Correcting population figure
+basicInfo[which(basicInfo$C2P>4),] #identifying the outlier
+basicInfo[which(basicInfo$A.Library.Number=="L0113"),] #assess all related information about the outlier
+basicInfo[378,"C2P"]<-0.463458489 #replacing numbers in the record
+basicInfo[378,"P1.1"]<-89542 #replacing numbers in the record
+basicInfo[378,"pServed"]<-89542 #replacing numbers in the record
+
+#Average and median cardholders per population by library type and year
+aggregate(basicInfo$C2P, by=list(A.Survey.Year.From,A1.4),FUN = mean)
+aggregate(basicInfo$C2P, by=list(A.Survey.Year.From,A1.4),FUN = median)
+
+#Range of cardholders per population by library type and year
+aggregate(basicInfo$C2P, by=list(A.Survey.Year.From,A1.4),FUN = IQR)
+aggregate(basicInfo$C2P, by=list(A.Survey.Year.From,A1.4),FUN = range)
+
+```
+
+Check structure, summary, analyze and plots (library activities).
+
+```{r}
+mergelibActivities<-merge(basicInfo,libraryActivities,by=c("A.Library.Number","A.Survey.Year.From"))
+
+summary(libActivities)
+
+#Separate libraries based on number of programs offered, using quartiles as breakpoints
+quantile(libActivities$F2.1.P, probs = seq(0,1,0.25))
+libActivities$proglevel<-findInterval(libActivities$F2.1.P,c(22,145,495,25000))
+libActivities$proglevel<-factor(libActivities$proglevel,levels = c("0","1","2","3","4"),labels = c("very low","low","medium","high","very high"))
+
+#Correlation between programs and active cardholders
+cor(libActivities$A1.14,libActivities$F2.1.P)
+#Correlation between programs and active cardholders at different program levels
+cor(libActivities$A1.14[which(libActivities$proglevel=="very low")],libActivities$F2.1.P[which(libActivities$proglevel=="very low")])
+cor(libActivities$A1.14[which(libActivities$proglevel=="low")],libActivities$F2.1.P[which(libActivities$proglevel=="low")])
+cor(libActivities$A1.14[which(libActivities$proglevel=="medium")],libActivities$F2.1.P[which(libActivities$proglevel=="medium")])
+cor(libActivities$A1.14[which(libActivities$proglevel=="high")],libActivities$F2.1.P[which(libActivities$proglevel=="high")])
+cor(libActivities$A1.14[which(libActivities$proglevel=="very high")],libActivities$F2.1.P[which(libActivities$proglevel=="very high")])
+
+#Median program attendance by year
+aggregate(libActivities$PA2C, by=list(libActivities$A.Survey.Year.From), FUN = median)
+plot(aggregate(libActivities$PA2C, by=list(libActivities$A.Survey.Year.From), FUN = median),main="Median Program Attendance by Year",xlab="Year",ylab="Program Attendance per Cardholder")
+
+#Programs and Attendance plots
+P2C<-ggplot(data = libActivities,aes(x=A.Survey.Year.From,y=P2C,fill=A1.4))+geom_bar(stat = "identity")+scale_fill_discrete(name="Library Type", labels=c("County Library","First Nations Library","LSB Library","Public or Union Library"))
+P2C+scale_x_discrete(name="Year") + scale_y_continuous(name="Programs per Cardholder")
+
+PA2C<-ggplot(data = libActivities,aes(x=A.Survey.Year.From,y=PA2C,fill=A1.4))+geom_bar(stat = "identity")+scale_fill_discrete(name="Library Type", labels=c("County Library","First Nations Library","LSB Library","Public or Union Library"))
+PA2C+scale_x_discrete(name="Year") + scale_y_continuous(name="Program Attendance per Cardholder")
+
+#Programs Offered
+progs<-grep("F2.3[0-9]{2}\\.Programs",names(libActivities), value = TRUE)
+progs2<-libActivities[,c("A.Survey.Year.From",progs)]
+names(progs2)=c("Year","Early literacy and Early learning", "Other Children's programming", "Summer Reading", "Homework help", "Class instruction at a library or school", "Teen programming", "Newcomer focus", "Careers, job help / skills", "Business Development", "Community Development", "Technology, social media and computer literacy", "Maker space, Digital media lab, Self-publishing", "Genealogy, local history, Doors Open", "Adult learning (not covered elsewhere)", "Seniors programming", "Culture Days, poetry and story readings, art shows", "First Nations Public Library Week", "First Nation Communities Reads", "Ontario Public Library Week / Canadian Library Month", "Book Clubs", "Other")
+prognums<-melt(progs2,id.vars=1)
+ggplot(prognums,aes(variable,value,fill=Year))+geom_bar(stat = "identity")+coord_flip()+scale_x_discrete(name="",limits = rev(levels(prognums$variable)))+scale_y_continuous(name="Number of Programs")
+
+#Circulation and Cardholders
+cor(libActivities$F1.0,libActivities$A1.14)
+libActivities.noTO<-libActivities[!grepl("Toronto",libActivities$A.Library.Full.Name),]
+cor(libActivities.noTO$F1.0,libActivities.noTO$A1.14)
+
+library(car)
+scatterplot(F1.0~A1.14|A.Survey.Year.From, data = libActivities, xlab = "Cardholders", ylab = "Circulation",main="Circulation vs. Cardholders")
+scatterplot(F1.0~A1.14|A.Survey.Year.From, data = libActivities.noTO, xlab = "Cardholders", ylab = "Circulation",main="Circulation vs. Cardholders")
+
+aggregate(libActivities$F1.0, by=list(libActivities$A.Survey.Year.From), FUN = median)
+aggregate(libActivities$F1.0, by=list(libActivities$A.Survey.Year.From), FUN = mean)
+
+#Interlibrary loans
+library(reshape2)
+illo.borrow<-melt(libActivities[,c("A.Survey.Year.From","F3.1.1","F3.1.2")],id.vars = 1)
+library(ggplot2)
+illoplot<-ggplot(illo.borrow,aes(A.Survey.Year.From,value))+geom_bar(aes(fill=variable),stat = "identity",position = "dodge")+scale_x_discrete(name="Year") + scale_y_continuous(name="Number of Items")
+illoplot+ scale_fill_discrete(name="InterLibrary Loan",breaks=c("F3.1.1", "F3.1.2"),labels=c("Requests Made","Items Borrowed"))
+
+aggregate(libActivities$F3.1.1, by=list(libActivities$A.Survey.Year.From), FUN = mean())
+
+#Weekly Activities
+weeklyActivities<-libActivities[grep("G1\\.[1-5]{1}\\.[1-6]{1}\\.W",names(libActivities))] 
+weekAct2C<-weeklyActivities/libActivities$A1.14 #divide by cardholders to normalize
+weeklyActivities$A.Survey.Year.From<-libActivities$A.Survey.Year.From
+weekAct2C$A.Survey.Year.From<-libActivities$A.Survey.Year.From
+
+#Plot - weekly circulation of items
+ggplot(weekAct2C,aes(x=libActivities$A.Survey.Year.From,y=G1.1.3.W,fill=libActivities$A1.4))+geom_bar(stat = "identity",position = "dodge")+scale_fill_discrete(name="Library Type",breaks=c("County, County co-operative or Regional Municipality Library","First Nations Library","LSB Library","Public or Union Library"), labels=c("County Library","First Nations Library","LSB Library","Public or Union Library"))+scale_x_discrete(name="Year") + scale_y_continuous(name="Number of Circulated Items")
+
+#Plot - weekly circulation digital vs. non-digital
+weeklyCircPvsE<-melt(weeklyActivities[,c("A.Survey.Year.From","G1.1.1.W","G1.1.2.W")],id.vars = 1)
+ggplot(weeklyCircPvsE,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Weekly Circulation")+scale_fill_discrete(name="Type of Material",breaks=c("G1.1.1.W","G1.1.2.W"),labels=c("All non-digital","All digital"))
+
+#Plot - weekly use of materials in library
+ggplot(libHoldings[which(libHoldings$A.Survey.Year.From==2015),],aes(C4.1,fill=A1.4))+geom_bar(stat = "count") + coord_flip()+scale_x_discrete(name="") + scale_y_continuous(name="Number of Libraries") + scale_fill_discrete(name="Year",breaks=c("County, County co-operative or Regional Municipality Library","First Nations Library","LSB Library","Public or Union Library"), labels=c("County Library","First Nations Library","LSB Library","Public or Union Library"))
+
+#Plot - weekly transactions
+transactions<-melt(weekAct2C[,c("A.Survey.Year.From","G1.4.1.W","G1.4.2.W","G1.4.3.W")],id.vars = 1)
+ggplot(transactions,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Weekly Transactions")+scale_fill_discrete(name="Type of Transaction",breaks=c("G1.4.1.W","G1.4.2.W","G1.4.3.W"),labels=c("Standard Reference","Electronic Reference","Reader's Advisory"))
+
+aggregate(weekAct2C$G1.1.1.W, by=list(weekAct2C$A.Survey.Year.From), FUN = mean)
+
+#Plot - weekly use of electronic resources
+elecResourses<-melt(weekAct2C[,c("A.Survey.Year.From","G1.3.1.W","G1.3.2.W","G1.3.3.W","G1.3.4.W")],id.vars = 1)
+ggplot(elecResourses,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Weekly Use of Electronic Information Resources")+scale_fill_discrete(name="Type of Resource",breaks=c("G1.3.1.W","G1.3.2.W","G1.3.3.W","G1.3.4.W"),labels=c("Library Workstations","Electronic Databases","Wireless Connection","Maker Spaces"))
+
+#Plot - weekly library visits
+visits<-melt(weekAct2C[,c("A.Survey.Year.From","G1.5.1.W","G1.5.2.W","G1.5.3.W")],id.vars = 1)
+ggplot(visits,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Weekly Visits")+scale_fill_discrete(name="Type of Visit",breaks=c("G1.5.1.W","G1.5.2.W","G1.5.3.W"),labels=c("In Person","Library Webiste","Social Media"))
+
+```
+
+Check structure, summary, analyze and plots (library holdings).
+
+```{r}
+libHoldings<-merge(basicInfo,libraryHoldings,by=c("A.Library.Number","A.Survey.Year.From"))
+
+str(libHoldings)
+libHoldings$C4.1<-factor(libHoldings$C4.1, levels = c(0,1),labels=c("No","Yes"))
+
+summary(libHoldings)
+#Normalize data for comparison (per cardholder rather than raw number)
+libHoldings$RT2C<-libHoldings$C1.1.T/libHoldings$A1.14
+libHoldings$RV2C<-libHoldings$C1.2.T/libHoldings$A1.14
+libHoldings$Cir2C<-libHoldings$C2.1.T/libHoldings$A1.14
+libHoldings$CirV2C<-libHoldings$C2.2.T/libHoldings$A1.14
+libHoldings$Peri2C<-libHoldings$C3.1.T/libHoldings$A1.14
+libHoldings$RData2C<-libHoldings$C1.3.1.T/libHoldings$A1.14
+libHoldings$Rcddvd2C<-libHoldings$C1.3.3.T/libHoldings$A1.14
+libHoldings$CirCddvd<-libHoldings$C2.3.1.T/libHoldings$A1.14
+libHoldings$CirE2C<-libHoldings$C2.3.3.T/libHoldings$A1.14
+libHoldings$PeriData<-libHoldings$C3.2.1.T/libHoldings$A1.14
+libHoldings$PeriCddvd<-libHoldings$C3.2.2.T/libHoldings$A1.14
+libHoldings$PeriT<-libHoldings$C3.2.4.T/libHoldings$A1.14
+
+#Titles held
+titlesHeld<-melt(libHoldings[,c("A.Survey.Year.From","RT2C","Cir2C","Peri2C")],id.vars = 1)
+ggplot(titlesHeld,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Titles Held per Cardholder")+scale_fill_discrete(name="Type of Holding",breaks=c("RT2C","Cir2C","Peri2C"),labels=c("Reference","Circulating","Periodicals"))
+
+cor(libHoldings$A1.14,libHoldings$C1.1.T, method = "pearson")
+cor(libHoldings$A1.14,libHoldings$C2.1.T, method = "pearson")
+cor(libHoldings$A1.14,libHoldings$C3.1.T, method = "pearson")
+
+libHoldings.noTO<-libHoldings[!grepl("Toronto",libActivities$A.Library.Full.Name),]
+cor(libHoldings.noTO$A1.14,libHoldings.noTO$C1.1.T, method = "pearson")
+cor(libHoldings.noTO$A1.14,libHoldings.noTO$C2.1.T, method = "pearson")
+cor(libHoldings.noTO$A1.14,libHoldings.noTO$C3.1.T, method = "pearson")
+
+aggregate(libHoldings.noTO$C1.1.T, by=list(libActivities.noTO$A.Survey.Year.From), FUN = mean)
+aggregate(libHoldings.noTO$C2.1.T, by=list(libActivities.noTO$A.Survey.Year.From), FUN = mean)
+aggregate(libHoldings.noTO$C3.1.T, by=list(libActivities.noTO$A.Survey.Year.From), FUN = mean)
+
+#Volumes held
+volHeld<-melt(libHoldings[,c("A.Survey.Year.From","RV2C","CirV2C")],id.vars = 1)
+ggplot(volHeld,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Volumes Held per Cardholder")+scale_fill_discrete(name="Type of Holding",breaks=c("RV2C","CirV2C"),labels=c("Reference","Circulating"))
+
+#Electronic titles and resources
+elecHeld<-melt(libHoldings[,c("A.Survey.Year.From","RData2C","Rcddvd2C","CirCddvd","CirE2C","PeriData","PeriCddvd")],id.vars = 1)
+ggplot(elecHeld,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Titles or Number Held per Cardholder")+scale_fill_discrete(name="Type of Holding",breaks=c("RData2C","Rcddvd2C","CirCddvd","CirE2C","PeriData","PeriCddvd"),labels=c("Reference Databases","Reference CD/DVD","Circulating CD/DVD","Circulating E-resources","Periodical Databases","Periodical CD/DVD"))
+
+
+#Downloading or streaming services
+ggplot(libHoldings,aes(C4.1,fill=A.Survey.Year.From))+geom_bar(stat = "count") + coord_flip()+scale_x_discrete(name="") + scale_y_continuous(name="Number of Libraries") + scale_fill_discrete(name="Year")
+ggplot(libHoldings[which(libFacilities$A.Survey.Year.From==2015),],aes(C4.1,fill=A1.4))+geom_bar(stat = "count") + coord_flip()+scale_x_discrete(name="") + scale_y_continuous(name="Number of Libraries") + scale_fill_discrete(name="Year")
+library(plyr)
+count(libHoldings$C4.1=="Yes")
+
+
+
+```
+
+Check structure, summary, analyze and plots (library facilities).
+
+```{r}
+libFacilities<-merge(basicInfo,libraryFacilities,by=c("A.Library.Number","A.Survey.Year.From"))
+
+str(libFacilities)
+libFacilities$E2.1<-factor(libFacilities$E2.1, levels = c(0,1),labels=c("No","Yes"))
+libFacilities$E2.3<-factor(libFacilities$E2.3, levels = c(0,1),labels=c("No","Yes"))
+libFacilities$E2.4<-factor(libFacilities$E2.4, levels = c(0,1),labels=c("No","Yes"))
+libFacilities$E2.6<-factor(libFacilities$E2.6, levels = c(0,1),labels=c("No","Yes"))
+
+summary(libFacilities)
+
+#Add columns that divide numbers by active cardholders to normalize data for comparison purposes
+libFacilities$PAW2C<-libFacilities$E1.1/libFacilities$A1.14
+libFacilities$LNT2C<-libFacilities$E1.1.4/libFacilities$A1.14
+libFacilities$eRead2C<-libFacilities$E1.2/libFacilities$A1.14
+
+#Electonric equipmnet and devices
+equip<-melt(libFacilities[,c("A.Survey.Year.From","PAW2C","LNT2C","eRead2C")],id.vars = 1)
+ggplot(equip,aes(A.Survey.Year.From,value,fill=variable))+geom_bar(stat = "identity", position = "dodge")+scale_x_discrete(name="Year")+scale_y_continuous(name="Eqipment per Cardholder")+scale_fill_discrete(name="Type of Equipment",breaks=c("PAW2C","LNT2C","eRead2C"),labels=c("Workstations","Laptops, netbooks, tablets","E-readers"))
+
+
+#3D printers (Information only collected in 2015)
+ggplot(libFacilities[which(libFacilities$A.Survey.Year.From==2015),],aes(E2.4,fill=A1.4))+geom_bar(stat = "count") + coord_flip()+scale_x_discrete(name="") + scale_y_continuous(name="Number of Libraries") + scale_fill_discrete(name="Year",breaks=c("County, County co-operative or Regional Municipality Library","First Nations Library","LSB Library","Public or Union Library"), labels=c("County Library","First Nations Library","LSB Library","Public or Union Library"))
+
+#Maker spaces (Information only collected in 2015)
+ggplot(libFacilities[which(libFacilities$A.Survey.Year.From==2015),],aes(E2.6,fill=A1.4))+geom_bar(stat = "count") + coord_flip()+scale_x_discrete(name="") + scale_y_continuous(name="Number of Libraries") + scale_fill_discrete(name="Year",breaks=c("County, County co-operative or Regional Municipality Library","First Nations Library","LSB Library","Public or Union Library"), labels=c("County Library","First Nations Library","LSB Library","Public or Union Library"))
+
+```
